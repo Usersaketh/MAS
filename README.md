@@ -6,22 +6,21 @@ Stage-by-stage build for a customer query processing system using:
 - FAISS (vector retrieval)
 - FastAPI (backend API)
 
-## Stage 3 (Current)
-Implemented a full multi-agent orchestration system with specialized agents:
+## Stage 4 (Current)
+Implemented a full multi-agent orchestration system with memory and observability:
 
-1. **Retriever Agent**: fetches relevant context from FAISS vector DB
-2. **Intent Classifier Agent**: classifies query intent (billing, shipping, account, complaint, general) with confidence score
-3. **Escalation Evaluator Agent**: determines if query needs escalation based on confidence and keywords
-4. **Policy Guardrails Agent**: checks refund/cancellation policies and detects abuse patterns
-5. **Reasoning Agent**: generates context-aware, intent-specific responses using specialized prompts
+1. Retriever Agent: fetches relevant context from FAISS vector DB
+2. Memory Recall: loads recent turns for the current conversation
+3. Intent Classifier Agent: classifies query intent with confidence score
+4. Escalation Evaluator Agent: determines if query needs escalation
+5. Policy Guardrails Agent: checks refund/cancellation policies and abuse patterns
+6. Reasoning Agent: generates context-aware, intent-specific responses
 
-Stage 3 features:
-- Multi-agent conditional routing based on escalation flags
-- Intent-specific response generation
-- Policy violation detection and reporting
-- Confidence-based escalation thresholds
-- Dynamic prompt adaptation per intent
-- Full audit trail via agent_trace
+Stage 4 additions:
+- Conversation memory persisted per conversation ID
+- Structured trace events persisted per query run
+- Memory and trace retrieval APIs
+- Unit tests for memory and graph behavior
 
 ### Project Structure
 
@@ -29,6 +28,7 @@ Stage 3 features:
 app/
   api/routes/
     documents.py
+    observability.py
     query.py
   core/config.py
   schemas/
@@ -37,9 +37,11 @@ app/
   services/
     agent_graph.py
     llm_service.py
+    memory_service.py
     retriever_service.py
     runtime.py
     stage3_agents.py
+    trace_service.py
   main.py
 ```
 
@@ -73,7 +75,7 @@ ollama serve
 uvicorn app.main:app --reload
 ```
 
-5. Test endpoint with a billing query:
+5. Test the query endpoint:
 
 ```powershell
 $body = @{
@@ -84,20 +86,7 @@ $body = @{
 Invoke-RestMethod -Method POST -Uri http://127.0.0.1:8000/query -ContentType "application/json" -Body $body
 ```
 
-Expected response includes: intent, confidence, needs_escalation, escalation_reason, policy_violations.
-
-6. Test endpoint with a complaint query (triggers escalation):
-
-```powershell
-$body = @{
-    user_id = "u2"
-    query = "I'm very angry! This is unfair and I demand a refund NOW!"
-} | ConvertTo-Json
-
-Invoke-RestMethod -Method POST -Uri http://127.0.0.1:8000/query -ContentType "application/json" -Body $body
-```
-
-7. Ingest custom knowledge documents:
+6. Ingest custom knowledge documents:
 
 ```powershell
 $body = @{
@@ -110,12 +99,31 @@ $body = @{
 Invoke-RestMethod -Method POST -Uri http://127.0.0.1:8000/documents -ContentType "application/json" -Body $body
 ```
 
-8. Verify retriever status:
+7. Verify retriever status:
 
 ```powershell
 Invoke-RestMethod -Method GET -Uri http://127.0.0.1:8000/documents/stats
 ```
 
-## Next Stages
-- Stage 4: Add conversation memory, observability/tracing, and automated tests
+8. Inspect memory for a conversation:
+
+```powershell
+Invoke-RestMethod -Method GET -Uri http://127.0.0.1:8000/observability/conversations/u1/memory
+```
+
+9. Inspect latest trace for a conversation:
+
+```powershell
+Invoke-RestMethod -Method GET -Uri http://127.0.0.1:8000/observability/conversations/u1/traces
+```
+
+## Testing
+
+Run the test suite with:
+
+```powershell
+pytest
+```
+
+## Next Stage
 - Stage 5: Add production hardening (auth, rate limiting, retries, caching, dockerization)

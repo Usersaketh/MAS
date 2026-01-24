@@ -18,6 +18,11 @@ class Settings(BaseSettings):
     max_refund_days: int = 30
     max_cancellation_minutes: int = 30
 
+    # Stage 4: Conversation memory and observability
+    conversation_memory_path: str = "./data/conversations.json"
+    trace_log_path: str = "./data/traces.json"
+    max_memory_turns: int = 8
+
     model_config = SettingsConfigDict(env_file=".env", env_file_encoding="utf-8", extra="ignore")
 
 

@@ -1,9 +1,10 @@
-from fastapi import APIRouter
+from fastapi import APIRouter, Depends
 
 from app.schemas.document import DocumentIngestRequest, DocumentIngestResponse, RetrieverStatsResponse
+from app.services.security import enforce_request_security
 from app.services.runtime import retriever
 
-router = APIRouter(prefix="/documents", tags=["documents"])
+router = APIRouter(prefix="/documents", tags=["documents"], dependencies=[Depends(enforce_request_security)])
 
 
 @router.post("", response_model=DocumentIngestResponse)

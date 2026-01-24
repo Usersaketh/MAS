@@ -27,6 +27,7 @@ def test_query_route_returns_stage4_fields(monkeypatch):
     response = client.post(
         "/query",
         json={"user_id": "u1", "conversation_id": "conv-a", "query": "Hello"},
+        headers={"X-API-Key": "dev-interview-key"},
     )
 
     assert response.status_code == 200
@@ -36,3 +37,15 @@ def test_query_route_returns_stage4_fields(monkeypatch):
     assert payload["intent"] == "general"
     assert payload["confidence"] == 0.8
     assert payload["needs_escalation"] is False
+
+
+def test_query_route_rejects_missing_api_key(monkeypatch):
+    monkeypatch.setattr(query_route, "agent_graph", FakeGraph())
+
+    client = TestClient(app)
+    response = client.post(
+        "/query",
+        json={"user_id": "u1", "conversation_id": "conv-a", "query": "Hello"},
+    )
+
+    assert response.status_code == 401

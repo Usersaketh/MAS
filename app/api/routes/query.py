@@ -1,9 +1,10 @@
-from fastapi import APIRouter
+from fastapi import APIRouter, Depends
 
 from app.schemas.query import QueryRequest, QueryResponse
+from app.services.security import enforce_request_security
 from app.services.runtime import agent_graph, retriever
 
-router = APIRouter(prefix="/query", tags=["query"])
+router = APIRouter(prefix="/query", tags=["query"], dependencies=[Depends(enforce_request_security)])
 
 
 @router.post("", response_model=QueryResponse)

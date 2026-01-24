@@ -6,7 +6,14 @@ Stage-by-stage build for a customer query processing system using:
 - FAISS (vector retrieval)
 - FastAPI (backend API)
 
-## Stage 4 (Current)
+## Stage 5-lite (Interview Hardening)
+Adds a minimal production-style layer without turning the project into a full deployment platform:
+
+- API key authentication on all non-health endpoints
+- Lightweight per-key rate limiting
+- Existing multi-agent retrieval, memory, tracing, and tests kept intact
+
+## Stage 4 (Still included)
 Implemented a full multi-agent orchestration system with memory and observability:
 
 1. Retriever Agent: fetches relevant context from FAISS vector DB
@@ -39,6 +46,7 @@ app/
     llm_service.py
     memory_service.py
     retriever_service.py
+    security.py
     runtime.py
     stage3_agents.py
     trace_service.py
@@ -75,7 +83,14 @@ ollama serve
 uvicorn app.main:app --reload
 ```
 
-5. Test the query endpoint:
+5. Provide the API key on requests:
+
+```powershell
+$headers = @{ "X-API-Key" = "dev-interview-key" }
+Invoke-RestMethod -Method GET -Uri http://127.0.0.1:8000/health -Headers $headers
+```
+
+6. Test the query endpoint:
 
 ```powershell
 $body = @{
@@ -83,10 +98,10 @@ $body = @{
     query = "Can I refund my order from last month?"
 } | ConvertTo-Json
 
-Invoke-RestMethod -Method POST -Uri http://127.0.0.1:8000/query -ContentType "application/json" -Body $body
+Invoke-RestMethod -Method POST -Uri http://127.0.0.1:8000/query -Headers $headers -ContentType "application/json" -Body $body
 ```
 
-6. Ingest custom knowledge documents:
+7. Ingest custom knowledge documents:
 
 ```powershell
 $body = @{
@@ -96,25 +111,25 @@ $body = @{
     )
 } | ConvertTo-Json
 
-Invoke-RestMethod -Method POST -Uri http://127.0.0.1:8000/documents -ContentType "application/json" -Body $body
+Invoke-RestMethod -Method POST -Uri http://127.0.0.1:8000/documents -Headers $headers -ContentType "application/json" -Body $body
 ```
 
-7. Verify retriever status:
+8. Verify retriever status:
 
 ```powershell
-Invoke-RestMethod -Method GET -Uri http://127.0.0.1:8000/documents/stats
+Invoke-RestMethod -Method GET -Uri http://127.0.0.1:8000/documents/stats -Headers $headers
 ```
 
-8. Inspect memory for a conversation:
+9. Inspect memory for a conversation:
 
 ```powershell
-Invoke-RestMethod -Method GET -Uri http://127.0.0.1:8000/observability/conversations/u1/memory
+Invoke-RestMethod -Method GET -Uri http://127.0.0.1:8000/observability/conversations/u1/memory -Headers $headers
 ```
 
-9. Inspect latest trace for a conversation:
+10. Inspect latest trace for a conversation:
 
 ```powershell
-Invoke-RestMethod -Method GET -Uri http://127.0.0.1:8000/observability/conversations/u1/traces
+Invoke-RestMethod -Method GET -Uri http://127.0.0.1:8000/observability/conversations/u1/traces -Headers $headers
 ```
 
 ## Testing

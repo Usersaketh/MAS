@@ -23,6 +23,11 @@ class Settings(BaseSettings):
     trace_log_path: str = "./data/traces.json"
     max_memory_turns: int = 8
 
+    # Stage 5-lite: Interview hardening
+    api_key: str = "dev-interview-key"
+    rate_limit_requests_per_minute: int = 30
+    rate_limit_window_seconds: int = 60
+
     model_config = SettingsConfigDict(env_file=".env", env_file_encoding="utf-8", extra="ignore")
 
 

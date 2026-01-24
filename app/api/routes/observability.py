@@ -1,9 +1,10 @@
-from fastapi import APIRouter
+from fastapi import APIRouter, Depends
 
 from app.schemas.query import ConversationTurn, TraceEvent
+from app.services.security import enforce_request_security
 from app.services.runtime import memory_service, trace_service
 
-router = APIRouter(prefix="/observability", tags=["observability"])
+router = APIRouter(prefix="/observability", tags=["observability"], dependencies=[Depends(enforce_request_security)])
 
 
 @router.get("/conversations/{conversation_id}/memory", response_model=list[ConversationTurn])

@@ -23,4 +23,9 @@ def process_query(payload: QueryRequest) -> QueryResponse:
         answer=result["answer"],
         agent_trace=result["agent_trace"],
         retrieved_context=result["retrieved_context"],
+        intent=result["intent"],
+        confidence=result["confidence"],
+        needs_escalation=result["needs_escalation"],
+        escalation_reason=result["escalation_reason"],
+        policy_violations=result["policy_violations"],
     )

@@ -6,31 +6,40 @@ Stage-by-stage build for a customer query processing system using:
 - FAISS (vector retrieval)
 - FastAPI (backend API)
 
-## Stage 2 (Current)
-Implemented backend with real embedding-based retrieval and a two-agent flow:
-1. Retriever Agent: fetches relevant context from FAISS
-2. Reasoning Agent: generates response with Ollama
+## Stage 3 (Current)
+Implemented a full multi-agent orchestration system with specialized agents:
 
-Stage 2 upgrades:
-- Real embeddings via Ollama embedding model
-- Persistent FAISS index on disk
-- Persistent document metadata in JSON
-- Document ingestion and retriever stats APIs
+1. **Retriever Agent**: fetches relevant context from FAISS vector DB
+2. **Intent Classifier Agent**: classifies query intent (billing, shipping, account, complaint, general) with confidence score
+3. **Escalation Evaluator Agent**: determines if query needs escalation based on confidence and keywords
+4. **Policy Guardrails Agent**: checks refund/cancellation policies and detects abuse patterns
+5. **Reasoning Agent**: generates context-aware, intent-specific responses using specialized prompts
+
+Stage 3 features:
+- Multi-agent conditional routing based on escalation flags
+- Intent-specific response generation
+- Policy violation detection and reporting
+- Confidence-based escalation thresholds
+- Dynamic prompt adaptation per intent
+- Full audit trail via agent_trace
 
 ### Project Structure
 
 ```text
 app/
-  api/routes/documents.py
-  api/routes/query.py
+  api/routes/
+    documents.py
+    query.py
   core/config.py
-  schemas/document.py
-  schemas/query.py
+  schemas/
+    document.py
+    query.py
   services/
     agent_graph.py
     llm_service.py
-    runtime.py
     retriever_service.py
+    runtime.py
+    stage3_agents.py
   main.py
 ```
 
@@ -50,7 +59,7 @@ pip install -r requirements.txt
 Copy-Item .env.example .env
 ```
 
-3. Start Ollama and ensure a model exists:
+3. Start Ollama and ensure models are available:
 
 ```powershell
 ollama pull llama3.1:8b
@@ -58,31 +67,55 @@ ollama pull nomic-embed-text
 ollama serve
 ```
 
-4. Run API:
+4. Run API in another terminal:
 
 ```powershell
 uvicorn app.main:app --reload
 ```
 
-5. Test endpoint:
+5. Test endpoint with a billing query:
 
 ```powershell
-Invoke-RestMethod -Method POST -Uri http://127.0.0.1:8000/query -ContentType "application/json" -Body '{"user_id":"u1","query":"How long does shipping take?"}'
+$body = @{
+    user_id = "u1"
+    query = "Can I refund my order from last month?"
+} | ConvertTo-Json
+
+Invoke-RestMethod -Method POST -Uri http://127.0.0.1:8000/query -ContentType "application/json" -Body $body
 ```
 
-6. Ingest your own knowledge documents:
+Expected response includes: intent, confidence, needs_escalation, escalation_reason, policy_violations.
+
+6. Test endpoint with a complaint query (triggers escalation):
 
 ```powershell
-Invoke-RestMethod -Method POST -Uri http://127.0.0.1:8000/documents -ContentType "application/json" -Body '{"documents":["Premium support is available for enterprise customers.","Order cancellation is possible within 30 minutes of placement."]}'
+$body = @{
+    user_id = "u2"
+    query = "I'm very angry! This is unfair and I demand a refund NOW!"
+} | ConvertTo-Json
+
+Invoke-RestMethod -Method POST -Uri http://127.0.0.1:8000/query -ContentType "application/json" -Body $body
 ```
 
-7. Verify retriever status:
+7. Ingest custom knowledge documents:
+
+```powershell
+$body = @{
+    documents = @(
+        "Premium support is available for enterprise customers.",
+        "Order cancellation is possible within 30 minutes of placement."
+    )
+} | ConvertTo-Json
+
+Invoke-RestMethod -Method POST -Uri http://127.0.0.1:8000/documents -ContentType "application/json" -Body $body
+```
+
+8. Verify retriever status:
 
 ```powershell
 Invoke-RestMethod -Method GET -Uri http://127.0.0.1:8000/documents/stats
 ```
 
 ## Next Stages
-- Stage 3: Add specialized agents (intent classification, escalation, policy checker)
-- Stage 4: Add conversation memory, observability, and tests
-- Stage 5: Add production hardening (auth, rate limiting, retries, caching)
+- Stage 4: Add conversation memory, observability/tracing, and automated tests
+- Stage 5: Add production hardening (auth, rate limiting, retries, caching, dockerization)

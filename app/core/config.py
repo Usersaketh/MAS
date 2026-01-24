@@ -13,6 +13,11 @@ class Settings(BaseSettings):
     faiss_index_path: str = "./data/faiss.index"
     faiss_metadata_path: str = "./data/documents.json"
 
+    # Stage 3: Agent thresholds and policy rules
+    escalation_confidence_threshold: float = 0.6
+    max_refund_days: int = 30
+    max_cancellation_minutes: int = 30
+
     model_config = SettingsConfigDict(env_file=".env", env_file_encoding="utf-8", extra="ignore")
 
 

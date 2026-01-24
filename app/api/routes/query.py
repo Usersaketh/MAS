@@ -1,15 +1,9 @@
 from fastapi import APIRouter
 
 from app.schemas.query import QueryRequest, QueryResponse
-from app.services.agent_graph import QueryAgentGraph
-from app.services.llm_service import OllamaService
-from app.services.retriever_service import RetrieverService
+from app.services.runtime import agent_graph, retriever
 
 router = APIRouter(prefix="/query", tags=["query"])
-
-retriever = RetrieverService()
-llm = OllamaService()
-agent_graph = QueryAgentGraph(retriever=retriever, llm=llm)
 
 # Seed a tiny in-memory corpus for Stage 1 demonstration.
 if retriever.index.ntotal == 0:

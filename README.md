@@ -6,21 +6,30 @@ Stage-by-stage build for a customer query processing system using:
 - FAISS (vector retrieval)
 - FastAPI (backend API)
 
-## Stage 1 (Current)
-Implemented foundational backend and a simple two-agent flow:
+## Stage 2 (Current)
+Implemented backend with real embedding-based retrieval and a two-agent flow:
 1. Retriever Agent: fetches relevant context from FAISS
 2. Reasoning Agent: generates response with Ollama
+
+Stage 2 upgrades:
+- Real embeddings via Ollama embedding model
+- Persistent FAISS index on disk
+- Persistent document metadata in JSON
+- Document ingestion and retriever stats APIs
 
 ### Project Structure
 
 ```text
 app/
+  api/routes/documents.py
   api/routes/query.py
   core/config.py
+  schemas/document.py
   schemas/query.py
   services/
     agent_graph.py
     llm_service.py
+    runtime.py
     retriever_service.py
   main.py
 ```
@@ -45,6 +54,7 @@ Copy-Item .env.example .env
 
 ```powershell
 ollama pull llama3.1:8b
+ollama pull nomic-embed-text
 ollama serve
 ```
 
@@ -60,8 +70,19 @@ uvicorn app.main:app --reload
 Invoke-RestMethod -Method POST -Uri http://127.0.0.1:8000/query -ContentType "application/json" -Body '{"user_id":"u1","query":"How long does shipping take?"}'
 ```
 
+6. Ingest your own knowledge documents:
+
+```powershell
+Invoke-RestMethod -Method POST -Uri http://127.0.0.1:8000/documents -ContentType "application/json" -Body '{"documents":["Premium support is available for enterprise customers.","Order cancellation is possible within 30 minutes of placement."]}'
+```
+
+7. Verify retriever status:
+
+```powershell
+Invoke-RestMethod -Method GET -Uri http://127.0.0.1:8000/documents/stats
+```
+
 ## Next Stages
-- Stage 2: Replace placeholder embeddings with real embedding model and persistent metadata store
 - Stage 3: Add specialized agents (intent classification, escalation, policy checker)
 - Stage 4: Add conversation memory, observability, and tests
 - Stage 5: Add production hardening (auth, rate limiting, retries, caching)

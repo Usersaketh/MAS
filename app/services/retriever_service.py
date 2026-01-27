@@ -21,15 +21,17 @@ class RetrieverService:
         self.documents: list[str] = self._load_documents()
         self.index = self._load_or_create_index()
 
-        if self.index.d != self.dimension:
-            raise ValueError(
-                f"Configured VECTOR_DIMENSION={self.dimension} does not match FAISS index dimension={self.index.d}."
-            )
+        # Only validate if index has data
+        if self.index.ntotal > 0:
+            if self.index.d != self.dimension:
+                raise ValueError(
+                    f"Configured VECTOR_DIMENSION={self.dimension} does not match FAISS index dimension={self.index.d}."
+                )
 
-        if self.index.ntotal != len(self.documents):
-            raise ValueError(
-                "FAISS index and metadata are out of sync. Remove data files or repair metadata."
-            )
+            if self.index.ntotal != len(self.documents):
+                raise ValueError(
+                    "FAISS index and metadata are out of sync. Remove data files or repair metadata."
+                )
 
     def _load_or_create_index(self) -> faiss.Index:
         if os.path.exists(self.index_path):
@@ -55,27 +57,56 @@ class RetrieverService:
         return docs
 
     def _save_documents(self) -> None:
-        os.makedirs(os.path.dirname(self.metadata_path), exist_ok=True)
-        payload = [{"text": doc} for doc in self.documents]
-        with open(self.metadata_path, "w", encoding="utf-8") as file:
-            json.dump(payload, file, ensure_ascii=True, indent=2)
+        try:
+            os.makedirs(os.path.dirname(self.metadata_path), exist_ok=True)
+            payload = [{"text": doc} for doc in self.documents]
+            with open(self.metadata_path, "w", encoding="utf-8") as file:
+                json.dump(payload, file, ensure_ascii=True, indent=2)
+        except Exception as e:
+            raise RuntimeError(f"Failed to save documents to {self.metadata_path}: {str(e)}") from e
 
     def save_index(self) -> None:
-        faiss.write_index(self.index, self.index_path)
+        try:
+            os.makedirs(os.path.dirname(self.index_path), exist_ok=True)
+            faiss.write_index(self.index, self.index_path)
+        except Exception as e:
+            raise RuntimeError(f"Failed to save FAISS index to {self.index_path}: {str(e)}") from e
 
     def _embed_texts(self, texts: list[str]) -> np.ndarray:
         if not texts:
             return np.empty((0, self.dimension), dtype="float32")
 
         try:
-            # Current Ollama Python client API.
-            response = self.client.embed(model=self.embed_model, input=texts)
-            embeddings = response["embeddings"]
-        except (AttributeError, TypeError):
-            # Backward-compatible API.
-            embeddings = [self.client.embeddings(model=self.embed_model, prompt=text)["embedding"] for text in texts]
+            # Try the newer Ollama Python client API
+            try:
+                response = self.client.embed(model=self.embed_model, input=texts)
+                embeddings = response.get("embeddings") or response
+                if isinstance(embeddings, dict) and "embeddings" in embeddings:
+                    embeddings = embeddings["embeddings"]
+            except (AttributeError, TypeError, KeyError):
+                # Fall back to older API - single text at a time
+                embeddings = []
+                for text in texts:
+                    response = self.client.embeddings(model=self.embed_model, prompt=text)
+                    if isinstance(response, dict):
+                        if "embedding" in response:
+                            embeddings.append(response["embedding"])
+                        elif "embeddings" in response:
+                            embeddings.extend(response["embeddings"])
+                    else:
+                        embeddings.append(response)
+        except Exception as e:
+            raise RuntimeError(
+                f"Failed to embed {len(texts)} texts with Ollama model '{self.embed_model}'. "
+                f"Error: {str(e)}. Make sure Ollama is running at {self.client.base_url} "
+                f"and the model is available (ollama pull {self.embed_model})."
+            ) from e
 
-        vectors = np.array(embeddings, dtype="float32")
+        try:
+            vectors = np.array(embeddings, dtype="float32")
+        except Exception as e:
+            raise RuntimeError(f"Failed to convert embeddings to numpy array: {str(e)}") from e
+        
         if vectors.ndim == 1:
             vectors = np.expand_dims(vectors, axis=0)
 

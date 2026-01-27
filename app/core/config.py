@@ -9,7 +9,7 @@ class Settings(BaseSettings):
     ollama_model: str = "llama3.1:8b"
     ollama_embed_model: str = "nomic-embed-text"
 
-    vector_dimension: int = 384
+    vector_dimension: int = 768
     faiss_index_path: str = "./data/faiss.index"
     faiss_metadata_path: str = "./data/documents.json"
 
